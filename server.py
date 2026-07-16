@@ -1,9 +1,9 @@
 import os
-from fastapi import FastAPI, HTTPException, Depends, Security
+import uvicorn
+from fastapi import FastAPI, HTTPException, Security, Depends
 from fastapi.security.api_key import APIKeyHeader
-from mcp.server.fastapi import FastApiServerOptions, create_server_application
-from mcp.server.models import InitializationOptions
 from mcp.server import Server
+from mcp.server.sse import SseServerTransport
 
 # Secure server with an API Key
 API_KEY = os.getenv("MCP_API_KEY", "change-this-in-production")
@@ -43,24 +43,18 @@ async def handle_call_tool(name: str, arguments: dict):
         }]
     raise ValueError(f"Unknown tool: {name}")
 
-options = FastApiServerOptions(
-    server_options=InitializationOptions(
-        server_name="my-cloud-mcp-server",
-        server_version="1.0.0",
-        capabilities=mcp_server.get_capabilities()
-    )
-)
+# Create the standard FastAPI app
+app = FastAPI(dependencies=[Depends(verify_api_key)])
+sse_transport = SseServerTransport(mcp_server)
 
-# Crucial fix: The application instance variable name is app
-app = create_server_application(
-    mcp_server, 
-    options,
-    dependencies=[Depends(verify_api_key)]
-)
+@app.get("/sse")
+async def handle_sse_endpoint():
+    return await sse_transport.handle_sse()
+
+@app.post("/messages")
+async def handle_messages_endpoint():
+    return await sse_transport.handle_messages()
 
 if __name__ == "__main__":
-    import uvicorn
     port = int(os.getenv("PORT", 8000))
-    # Corrected target variable to app instead of server
-    uvicorn.run("server:app", host="0.0.0.0", port=port, reload=False)
-
+    uvicorn.run("server:app", host="0.0.0.0", port=port)
