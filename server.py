@@ -5,11 +5,11 @@ from fastapi_mcp import FastApiMCP
 # Initialize standard FastAPI app
 app = FastAPI()
 
-# Your fix: Clean initialization without invalid keyword arguments
+# Clean initialization 
 mcp = FastApiMCP(app)
 
-# Define your AI tool simply using standard decorators
-@mcp.tool(name="fetch_cloud_data", description="A tool that returns environmental cloud data.")
+# Fixed decorator attribute name from tool to tools
+@mcp.tools(name="fetch_cloud_data", description="A tool that returns environmental cloud data.")
 async def fetch_cloud_data(query: str) -> str:
     """Processes environmental inquiries or data lookups."""
     return f"EcoScapeAI successfully processed your cloud query: '{query}'"
