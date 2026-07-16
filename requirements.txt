@@ -1,3 +1,4 @@
 mcp
+mcp[fastapi]
 fastapi
 uvicorn
