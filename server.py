@@ -2,20 +2,19 @@ import os
 from fastapi import FastAPI
 from fastapi_mcp import FastApiMCP
 
-# 1. Initialize standard FastAPI
+# Initialize standard FastAPI app
 app = FastAPI()
 
-# 2. Initialize and link the MCP server framework
-mcp = FastApiMCP(app, title="EcoScape MCP Server", version="1.0.0")
+# Your fix: Clean initialization without invalid keyword arguments
+mcp = FastApiMCP(app)
 
-# 3. Define your AI tool simply using standard decorators
+# Define your AI tool simply using standard decorators
 @mcp.tool(name="fetch_cloud_data", description="A tool that returns environmental cloud data.")
 async def fetch_cloud_data(query: str) -> str:
     """Processes environmental inquiries or data lookups."""
-    # You can customize your internal logic here anytime!
     return f"EcoScapeAI successfully processed your cloud query: '{query}'"
 
-# 4. Mount the endpoints automatically
+# Mount the MCP endpoints onto FastAPI automatically
 mcp.mount()
 
 if __name__ == "__main__":
