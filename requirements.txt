@@ -1,4 +1,3 @@
 mcp
-mcp[fastapi]
-fastapi
+mcp-server-sse
 uvicorn
