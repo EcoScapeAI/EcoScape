@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EcoScape — Interactive Prototype</title>
+<style>
+  :root{
+    --navy:#1F3A3D; --navy-light:#2C4E52; --green:#2E7D32; --green-light:#E8F5E9;
+    --green-dark:#1B5E20; --amber:#F9A825; --red:#C62828; --grey:#666;
+    --bg:#F4F6F5; --card:#FFFFFF; --border:#E1E5E4;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:#222;}
+  .app{display:flex;height:100vh;overflow:hidden;}
+
+  /* Sidebar */
+  .sidebar{width:260px;background:var(--navy);color:#fff;display:flex;flex-direction:column;flex-shrink:0;}
+  .brand{padding:20px 18px 12px;border-bottom:1px solid rgba(255,255,255,.12);}
+  .brand .logo{font-size:22px;font-weight:800;letter-spacing:.5px;}
+  .brand .logo span{color:#8BC34A;}
+  .brand .sub{font-size:11px;color:#B7C4C2;margin-top:2px;}
+  .tenant{padding:12px 18px;font-size:12px;color:#CFE0DE;border-bottom:1px solid rgba(255,255,255,.12);}
+  .nav{flex:1;overflow-y:auto;padding:10px 0;}
+  .nav-group-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#8FA6A3;padding:14px 18px 6px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 18px;font-size:13.5px;cursor:pointer;color:#DCE7E5;border-left:3px solid transparent;}
+  .nav-item:hover{background:rgba(255,255,255,.06);}
+  .nav-item.active{background:rgba(139,195,74,.16);border-left-color:#8BC34A;color:#fff;font-weight:600;}
+  .nav-item .dot{width:6px;height:6px;border-radius:50%;background:#8BC34A;flex-shrink:0;}
+  .nav-item.locked{color:#7C8E8B;cursor:not-allowed;}
+  .nav-item.locked .dot{background:#5A6B69;}
+  .badge-phase{margin-left:auto;font-size:9px;padding:1px 6px;border-radius:8px;background:rgba(255,255,255,.1);color:#B7C4C2;}
+  .sidebar-foot{padding:12px 18px;font-size:11px;color:#8FA6A3;border-top:1px solid rgba(255,255,255,.12);}
+
+  /* Main */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .topbar{height:56px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;flex-shrink:0;}
+  .topbar .title{font-size:17px;font-weight:700;color:var(--navy);}
+  .topbar .right{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--grey);}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
+  .content{flex:1;overflow-y:auto;padding:24px 28px;}
+  .screen{display:none;}
+  .screen.active{display:block;animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+  h2.pagetitle{margin:0 0 4px;font-size:20px;color:var(--navy);}
+  .pagesub{color:var(--grey);font-size:13px;margin-bottom:18px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:18px;}
+  .card h3{margin:0 0 12px;font-size:14px;color:var(--navy);text-transform:uppercase;letter-spacing:.04em;}
+  .grid{display:grid;gap:16px;}
+  .grid-4{grid-template-columns:repeat(4,1fr);}
+  .grid-2{grid-template-columns:1fr 1fr;}
+  .grid-3{grid-template-columns:repeat(3,1fr);}
+
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;}
+  .kpi .label{font-size:12px;color:var(--grey);margin-bottom:6px;}
+  .kpi .value{font-size:24px;font-weight:800;color:var(--navy);}
+  .kpi .delta{font-size:11px;margin-top:4px;}
+  .delta.up{color:var(--green);} .delta.down{color:var(--red);}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;background:var(--green-light);color:var(--green-dark);padding:8px 10px;font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;}
+  td{padding:8px 10px;border-bottom:1px solid var(--border);}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:700;}
+  .badge.won,.badge.active,.badge.paid,.badge.complete{background:var(--green-light);color:var(--green-dark);}
+  .badge.pending,.badge.sent{background:#FFF3E0;color:#E65100;}
+  .badge.overdue,.badge.lost{background:#FFEBEE;color:var(--red);}
+
+  .tabs{display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:16px;}
+  .tab{padding:9px 16px;font-size:13px;cursor:pointer;color:var(--grey);border-bottom:2px solid transparent;margin-bottom:-2px;}
+  .tab.active{color:var(--green-dark);border-bottom-color:var(--green);font-weight:700;}
+
+  label{display:block;font-size:12px;color:var(--grey);margin-bottom:4px;font-weight:600;}
+  input[type=text],input[type=number],input[type=date],select,textarea{
+    width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;margin-bottom:14px;background:#fff;}
+  input:disabled{background:#F7F7F7;color:#888;}
+  .field{margin-bottom:2px;}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:7px;border:none;font-size:13px;font-weight:700;cursor:pointer;}
+  .btn-primary{background:var(--green);color:#fff;}
+  .btn-primary:hover{background:var(--green-dark);}
+  .btn-outline{background:#fff;border:1px solid var(--border);color:var(--navy);}
+  .btn-outline:hover{background:#F0F0F0;}
+  .btn-row{display:flex;gap:10px;margin-top:6px;}
+
+  .checklist-item{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--border);}
+  .checklist-item:last-child{border-bottom:none;}
+  .checklist-item input[type=checkbox]{width:18px;height:18px;margin:0;}
+  .checklist-item.done .task-label{text-decoration:line-through;color:#999;}
+  .task-label{flex:1;font-size:13.5px;}
+
+  .photo-tile{width:100%;aspect-ratio:4/3;background:linear-gradient(135deg,#DDEEDB,#C8E6C9);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--green-dark);font-size:11px;text-align:center;position:relative;border:1px dashed #9CCC9C;}
+  .ai-flag{position:absolute;bottom:6px;left:6px;right:6px;background:rgba(198,40,40,.92);color:#fff;font-size:10px;padding:3px 6px;border-radius:5px;}
+  .ai-flag.warn{background:rgba(249,168,37,.95);color:#4A3500;}
+
+  .severity{font-size:11px;padding:2px 8px;border-radius:8px;font-weight:700;}
+  .sev-high{background:#FFEBEE;color:var(--red);}
+  .sev-med{background:#FFF3E0;color:#E65100;}
+  .sev-low{background:var(--green-light);color:var(--green-dark);}
+
+  .quo-table input{margin:0;padding:6px 8px;font-size:13px;}
+  .quo-table td{vertical-align:middle;}
+  .totals-box{max-width:340px;margin-left:auto;font-size:13.5px;}
+  .totals-box .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);}
+  .totals-box .row.grand{font-weight:800;font-size:16px;color:var(--navy);border-bottom:none;padding-top:10px;}
+  .totals-box .row.internal{color:var(--red);font-style:italic;font-size:12px;}
+
+  .timeline{border-left:2px solid var(--green);margin-left:8px;padding-left:18px;}
+  .timeline .tstep{position:relative;padding-bottom:18px;}
+  .timeline .tstep::before{content:'';position:absolute;left:-23px;top:2px;width:10px;height:10px;border-radius:50%;background:var(--green);}
+  .timeline .tstep b{color:var(--navy);}
+
+  .signature-pad{border:1px dashed #999;border-radius:8px;background:#fff;height:130px;cursor:crosshair;touch-action:none;}
+  .countdown{font-size:12px;padding:3px 8px;border-radius:6px;background:#FFF3E0;color:#E65100;font-weight:700;}
+  .map-placeholder{height:160px;border-radius:8px;background:
+     repeating-linear-gradient(45deg,#E3EFE2,#E3EFE2 10px,#D6E8D5 10px,#D6E8D5 20px);
+     display:flex;align-items:center;justify-content:center;color:var(--green-dark);font-size:12px;border:1px solid var(--border);position:relative;}
+  .pin{position:absolute;font-size:22px;}
+  .footer-note{font-size:11px;color:#999;text-align:center;padding:10px 0;}
+  .phase-banner{background:#FFF8E1;border:1px solid #FFE082;color:#8D6E00;font-size:12px;padding:8px 14px;border-radius:8px;margin-bottom:16px;}
+
+  /* ---- Phase 2 additions ---- */
+  .alert-banner{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;}
+  .alert-banner.warn{background:#FFF3E0;color:#8D5300;border:1px solid #FFCC80;}
+  .alert-banner.crit{background:#FFEBEE;color:#B71C1C;border:1px solid #EF9A9A;}
+  .alert-banner button{margin-left:auto;}
+
+  .cal-toolbar{display:flex;gap:6px;margin-bottom:14px;}
+  .cal-toolbar button.seg{padding:6px 14px;border:1px solid var(--border);background:#fff;border-radius:6px;font-size:12px;cursor:pointer;color:var(--navy);}
+  .cal-toolbar button.seg.on{background:var(--green);color:#fff;border-color:var(--green);}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+  .cal-head{font-size:11px;color:var(--grey);text-transform:uppercase;text-align:center;padding-bottom:4px;}
+  .cal-day{min-height:78px;border:1px solid var(--border);border-radius:6px;padding:5px 6px;font-size:11px;background:#fff;}
+  .cal-day.other{background:#FAFAFA;color:#bbb;}
+  .cal-day.today{border:2px solid var(--green);}
+  .cal-day .dnum{font-weight:700;color:var(--navy);margin-bottom:3px;}
+  .cal-job{background:var(--green-light);color:var(--green-dark);border-radius:4px;padding:1px 5px;margin-bottom:2px;font-size:10px;}
+  .cal-job.conflict{background:#FFEBEE;color:#B71C1C;}
+
+  .cond-badge{font-size:11px;padding:2px 8px;border-radius:8px;font-weight:700;}
+  .cond-good{background:var(--green-light);color:var(--green-dark);}
+  .cond-fair{background:#FFF3E0;color:#E65100;}
+  .cond-critical{background:#FFEBEE;color:var(--red);}
+
+  .risk-pin{position:absolute;width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15);}
+  .risk-low{background:#43A047;} .risk-med{background:#FB8C00;} .risk-high{background:#E53935;}
+
+  .phone-frame{width:270px;border:8px solid var(--navy);border-radius:26px;padding:14px 12px;background:#fff;margin:0 auto;box-shadow:0 6px 18px rgba(0,0,0,.15);}
+  .phone-status{text-align:center;font-size:10px;color:var(--grey);margin-bottom:8px;}
+  .phone-task{display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border);font-size:12px;}
+  .phone-task .ic{font-size:16px;}
+  .sync-pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 10px;border-radius:12px;background:var(--green-light);color:var(--green-dark);font-weight:700;margin-bottom:10px;}
+  .sync-pill.offline{background:#FFF3E0;color:#E65100;}
+
+  .qr-box{width:96px;height:96px;background:repeating-conic-gradient(#1F3A3D 0% 25%, #fff 0% 50%) 50% / 12px 12px;border:1px solid var(--border);border-radius:6px;}
+
+  /* ---- Phase 3 additions ---- */
+  .portal-frame{border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.08);}
+  .portal-topbar{background:var(--navy);color:#fff;padding:10px 16px;font-size:13px;display:flex;justify-content:space-between;align-items:center;}
+  .portal-body{padding:18px;background:#fbfcfb;}
+
+  .chat-panel{border:1px solid var(--border);border-radius:10px;background:#fff;display:flex;flex-direction:column;height:440px;}
+  .chat-history{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;}
+  .chat-bubble{max-width:75%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5;}
+  .chat-bubble.user{align-self:flex-end;background:var(--green);color:#fff;border-bottom-right-radius:2px;}
+  .chat-bubble.ai{align-self:flex-start;background:#F0F2F1;color:#222;border-bottom-left-radius:2px;}
+  .chat-bubble.ai .sources{display:block;margin-top:6px;font-size:11px;color:var(--grey);font-style:italic;}
+  .chat-suggest{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 12px;}
+  .chat-chip{font-size:11.5px;padding:5px 12px;border-radius:14px;border:1px solid var(--border);background:#fff;cursor:pointer;color:var(--navy);}
+  .chat-chip:hover{background:var(--green-light);}
+  .chat-input-row{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border);}
+  .chat-input-row input{flex:1;margin-bottom:0;}
+  .ai-disclosure{font-size:11px;color:var(--grey);text-align:center;padding:6px 0 0;}
+
+  .folder-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  .folder-tile{border:1px solid var(--border);border-radius:8px;padding:14px 10px;text-align:center;font-size:12px;cursor:pointer;background:#fff;}
+  .folder-tile:hover{background:var(--green-light);}
+  .folder-tile .fic{font-size:26px;display:block;margin-bottom:6px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="sidebar">
+    <div class="brand"><div class="logo">Eco<span>Scape</span></div><div class="sub">Intelligent Landscape Management</div></div>
+    <div class="tenant">🏢 Eco Roots Landscaping (M) Sdn. Bhd.</div>
+    <div class="nav" id="nav">
+      <div class="nav-group-label">Phase 1 — MVP</div>
+      <div class="nav-item" data-screen="dashboard"><span class="dot"></span>Dashboard</div>
+      <div class="nav-item" data-screen="customerlist"><span class="dot"></span>CRM — Customers</div>
+      <div class="nav-item" data-screen="inspection"><span class="dot"></span>Site Inspection</div>
+      <div class="nav-item" data-screen="quotation"><span class="dot"></span>Quotation</div>
+      <div class="nav-item" data-screen="contract"><span class="dot"></span>Contract</div>
+      <div class="nav-item" data-screen="workorder"><span class="dot"></span>Work Orders</div>
+
+      <div class="nav-group-label">Phase 2</div>
+      <div class="nav-item" data-screen="planning"><span class="dot"></span>Project Planning</div>
+      <div class="nav-item" data-screen="workforce"><span class="dot"></span>Workforce Mgmt</div>
+      <div class="nav-item" data-screen="equipment"><span class="dot"></span>Equipment</div>
+      <div class="nav-item" data-screen="inventory"><span class="dot"></span>Inventory</div>
+      <div class="nav-item" data-screen="mobileapp"><span class="dot"></span>Mobile App (Field)</div>
+      <div class="nav-item" data-screen="tree"><span class="dot"></span>Tree Management</div>
+      <div class="nav-item" data-screen="asset"><span class="dot"></span>Asset Register</div>
+      <div class="nav-item" data-screen="pm"><span class="dot"></span>Preventive Maint.</div>
+
+      <div class="nav-group-label">Phase 3</div>
+      <div class="nav-item" data-screen="purchasing"><span class="dot"></span>Purchasing</div>
+      <div class="nav-item" data-screen="portal"><span class="dot"></span>Customer Portal</div>
+      <div class="nav-item" data-screen="complaints"><span class="dot"></span>Complaints</div>
+      <div class="nav-item" data-screen="ai"><span class="dot"></span>AI Assistant</div>
+      <div class="nav-item" data-screen="documents"><span class="dot"></span>Document Mgmt</div>
+    </div>
+    <div class="sidebar-foot">v1.0 Prototype · Not final UI/UX</div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="title" id="topTitle">Dashboard</div>
+      <div class="right">
+        <span>15 Jul 2026</span>
+        <span>Yoga Logan</span>
+        <div class="avatar">YL</div>
+      </div>
+    </div>
+    <div class="content" id="content">
+
+      <!-- ===================== DASHBOARD ===================== -->
+      <div class="screen active" id="screen-dashboard">
+        <h2 class="pagetitle">Management Dashboard</h2>
+        <div class="pagesub">Live overview across all active contracts and sites.</div>
+        <div class="grid grid-4">
+          <div class="kpi"><div class="label">Revenue (MTD)</div><div class="value">RM 184,250</div><div class="delta up">▲ 8.2% vs last month</div></div>
+          <div class="kpi"><div class="label">Outstanding</div><div class="value">RM 42,900</div><div class="delta down">▲ 3 invoices overdue</div></div>
+          <div class="kpi"><div class="label">Active Contracts</div><div class="value">37</div><div class="delta up">▲ 2 new this month</div></div>
+          <div class="kpi"><div class="label">Profit Margin</div><div class="value">27.4%</div><div class="delta up">▲ 1.1 pts</div></div>
+        </div>
+        <br>
+        <div class="grid grid-2">
+          <div class="card">
+            <h3>Monthly Revenue (RM '000)</h3>
+            <div style="display:flex;align-items:flex-end;gap:10px;height:140px;">
+              <div style="flex:1;background:var(--green);height:60%;border-radius:4px 4px 0 0;position:relative;"><span style="position:absolute;top:-18px;font-size:11px;left:0;right:0;text-align:center;">142</span></div>
+              <div style="flex:1;background:var(--green);height:68%;border-radius:4px 4px 0 0;position:relative;"><span style="position:absolute;top:-18px;font-size:11px;left:0;right:0;text-align:center;">156</span></div>
+              <div style="flex:1;background:var(--green);height:74%;border-radius:4px 4px 0 0;position:relative;"><span style="position:absolute;top:-18px;font-size:11px;left:0;right:0;text-align:center;">170</span></div>
+              <div style="flex:1;background:var(--green);height:80%;border-radius:4px 4px 0 0;position:relative;"><span style="position:absolute;top:-18px;font-size:11px;left:0;right:0;text-align:center;">184</span></div>
+              <div style="flex:1;background:#C8E6C9;height:100%;border-radius:4px 4px 0 0;position:relative;"><span style="position:absolute;top:-18px;font-size:11px;left:0;right:0;text-align:center;color:#999;">tgt 210</span></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--grey);margin-top:6px;">
+              <span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug (proj.)</span>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Contracts Expiring Next 90 Days</h3>
+            <table>
+              <tr><th>Customer</th><th>Contract No.</th><th>Expiry</th><th>Value</th></tr>
+              <tr><td>ABC Condominium</td><td>C-2027-00075</td><td>31 Dec 2028</td><td>RM 76,200/yr</td></tr>
+              <tr><td>Lotus Business Park</td><td>C-2026-00041</td><td>14 Sep 2026</td><td>RM 54,000/yr</td></tr>
+              <tr><td>Sunway Grove Hospital</td><td>C-2026-00052</td><td>02 Oct 2026</td><td>RM 128,400/yr</td></tr>
+              <tr><td>Taman Perindustrian Jaya</td><td>C-2026-00019</td><td>20 Oct 2026</td><td>RM 61,900/yr</td></tr>
+            </table>
+          </div>
+        </div>
+        <br>
+        <div class="grid grid-3">
+          <div class="card"><h3>Work Orders</h3>
+            <div class="row" style="display:flex;justify-content:space-between;padding:4px 0;"><span>Completed (MTD)</span><b>212</b></div>
+            <div class="row" style="display:flex;justify-content:space-between;padding:4px 0;"><span>Pending</span><b>18</b></div>
+            <div class="row" style="display:flex;justify-content:space-between;padding:4px 0;"><span>Overdue Sign-off</span><b style="color:var(--red)">3</b></div>
+          </div>
+          <div class="card"><h3>Complaints (Phase 3 preview)</h3>
+            <div class="row" style="display:flex;justify-content:space-between;padding:4px 0;"><span>Open</span><b>2</b></div>
+            <div class="row" style="display:flex;justify-content:space-between;padding:4px 0;"><span>Resolved (MTD)</span><b>9</b></div>
+            <div class="row" style="display:flex;justify-content:space-between;padding:4px 0;"><span>Avg. Resolution</span><b>1.8 days</b></div>
+          </div>
+          <div class="card"><h3>Customer Satisfaction</h3>
+            <div class="row" style="display:flex;justify-content:space-between;padding:4px 0;"><span>Score</span><b>4.6 / 5</b></div>
+            <div class="row" style="display:flex;justify-content:space-between;padding:4px 0;"><span>Responses (MTD)</span><b>28</b></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== CRM: CUSTOMER LIST ===================== -->
+      <div class="screen" id="screen-customerlist">
+        <h2 class="pagetitle">CRM — Customers</h2>
+        <div class="pagesub">All customer accounts &amp; sales pipeline</div>
+        <div class="btn-row" style="margin-bottom:14px;">
+          <button class="btn btn-primary" onclick="showScreen('customernew')">+ Add Customer</button>
+        </div>
+        <div class="card">
+          <table id="customerTable">
+            <tr><th>Company</th><th>Primary Contact</th><th>Segment</th><th>Sales Stage</th><th>Contract Status</th></tr>
+            <tr onclick="showScreen('crm')" style="cursor:pointer;"><td>ABC Condominium</td><td>Mr Lim Chee Keong</td><td>Residential — Strata</td><td><span class="badge won">Won</span></td><td><span class="badge active">Active</span></td></tr>
+            <tr onclick="alert('Full profile view not built out in this prototype — only ABC Condominium has a detailed profile. In production every row opens its own Customer Profile.')" style="cursor:pointer;"><td>Lotus Business Park</td><td>Ms Tan Wei Ling</td><td>Commercial</td><td><span class="badge won">Won</span></td><td><span class="badge active">Active</span></td></tr>
+            <tr onclick="alert('Full profile view not built out in this prototype — only ABC Condominium has a detailed profile.')" style="cursor:pointer;"><td>Sunway Grove Hospital</td><td>Dr. Aisyah Rahman</td><td>Institutional — Healthcare</td><td><span class="badge won">Won</span></td><td><span class="badge active">Active</span></td></tr>
+            <tr onclick="alert('Full profile view not built out in this prototype — only ABC Condominium has a detailed profile.')" style="cursor:pointer;"><td>Taman Perindustrian Jaya</td><td>Mr K. Balakrishnan</td><td>Industrial Park</td><td><span class="badge won">Won</span></td><td><span class="badge active">Active</span></td></tr>
+            <tr onclick="alert('Full profile view not built out in this prototype — only ABC Condominium has a detailed profile.')" style="cursor:pointer;"><td>Menara TechHub</td><td>Ms Chloe Wong</td><td>Commercial</td><td><span class="badge pending">Quotation Sent</span></td><td>—</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===================== CRM: ADD CUSTOMER ===================== -->
+      <div class="screen" id="screen-customernew">
+        <h2 class="pagetitle">Add Customer</h2>
+        <div class="pagesub">New enquiry → CRM record</div>
+
+        <div class="grid grid-2">
+          <div class="card"><h3>Company Details</h3>
+            <div class="field"><label>Company Name</label><input type="text" id="newCompanyName" placeholder="e.g. Menara Bukit Jalil JMB"></div>
+            <div class="field"><label>SSM / JMB Registration No.</label><input type="text" id="newSSM" placeholder="e.g. JMB-0055120-M"></div>
+            <div class="field"><label>Industry Segment</label>
+              <select id="newSegment">
+                <option>Residential — Strata</option>
+                <option>Commercial</option>
+                <option>Government Agency</option>
+                <option>University / Campus</option>
+                <option>Hospital / Healthcare</option>
+                <option>Shopping Mall</option>
+                <option>Industrial Park</option>
+                <option>Township Developer</option>
+              </select>
+            </div>
+            <div class="field"><label>Billing Address</label><input type="text" id="newBillingAddress" placeholder="Lot / street, postcode, state"></div>
+            <div class="field"><label>Assigned Sales Executive</label>
+              <select id="newSalesExec">
+                <option>Nurul Ain binte Zaidi</option>
+                <option>Mohd Faizal</option>
+                <option>Azahar bin Rosli</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card"><h3>Primary Contact</h3>
+            <div class="field"><label>Contact Name</label><input type="text" id="newContactName" placeholder="e.g. Mr Tan Ah Kow"></div>
+            <div class="field"><label>Designation</label><input type="text" id="newDesignation" placeholder="e.g. Building Manager"></div>
+            <div class="grid grid-2">
+              <div class="field"><label>Phone</label><input type="text" id="newPhone" placeholder="012-345 6789"></div>
+              <div class="field"><label>Email</label><input type="text" id="newEmail" placeholder="name@company.my"></div>
+            </div>
+            <h3 style="margin-top:16px;">Site Location</h3>
+            <div class="field"><label>Site Address</label><input type="text" id="newSiteAddress" placeholder="Site address for maintenance"></div>
+            <div class="grid grid-2">
+              <div class="field"><label>GPS Coordinates</label><input type="text" id="newGPS" placeholder="Auto-filled via Google Maps in production" disabled></div>
+              <div class="field"><label>Grass Area (m²)</label><input type="number" id="newArea" placeholder="e.g. 8000"></div>
+            </div>
+            <div class="field"><label>Initial Sales Stage</label>
+              <select id="newStage">
+                <option>Enquiry</option>
+                <option>Site Visit Scheduled</option>
+                <option>Quotation Sent</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="saveCustomer()">✔ Save Customer</button>
+          <button class="btn btn-outline" onclick="showScreen('customerlist')">Cancel</button>
+        </div>
+      </div>
+
+      <!-- ===================== CRM ===================== -->
+      <div class="screen" id="screen-crm">
+        <div class="btn-row" style="margin-bottom:10px;"><button class="btn btn-outline" onclick="showScreen('customerlist')">← Back to Customer List</button></div>
+        <h2 class="pagetitle">ABC Condominium</h2>
+        <div class="pagesub">Customer Profile · Sales Stage: <span class="badge won">WON</span></div>
+        <div class="tabs">
+          <div class="tab active" data-tab="crm-overview">Overview</div>
+          <div class="tab" data-tab="crm-contacts">Contacts</div>
+          <div class="tab" data-tab="crm-sites">Sites</div>
+          <div class="tab" data-tab="crm-docs">Quotations &amp; Invoices</div>
+        </div>
+
+        <div class="tabpane active" id="crm-overview">
+          <div class="grid grid-2">
+            <div class="card"><h3>Company Details</h3>
+              <p style="font-size:13px;line-height:1.9;">
+                <b>Company:</b> ABC Condominium Management Corporation<br>
+                <b>SSM/JMB No.:</b> JMB-0041823-M<br>
+                <b>Industry Segment:</b> Residential — Strata<br>
+                <b>Billing Address:</b> Lot 12, Jalan Ampang Utama 2/1, 68000 Ampang, Selangor<br>
+                <b>Assigned Sales Exec:</b> Nurul Ain binte Zaidi<br>
+                <b>Customer Since:</b> Jan 2025
+              </p>
+            </div>
+            <div class="card"><h3>Contract Snapshot</h3>
+              <p style="font-size:13px;line-height:1.9;">
+                <b>Contract:</b> Landscape Maintenance — C-2027-00075<br>
+                <b>Period:</b> Jan 2027 – Dec 2028<br>
+                <b>Status:</b> <span class="badge active">Active</span><br>
+                <b>Value:</b> RM 76,200 / year<br>
+                <b>Supervisor:</b> Azahar bin Rosli
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tabpane" id="crm-contacts" style="display:none">
+          <div class="card"><h3>Contact Persons</h3>
+            <table>
+              <tr><th>Name</th><th>Designation</th><th>Phone</th><th>Email</th><th>Primary</th></tr>
+              <tr><td>Mr Lim Chee Keong</td><td>Building Manager</td><td>012-345 6789</td><td>lim@abccondo.my</td><td>✅</td></tr>
+              <tr><td>Ms Farah Aziz</td><td>JMB Treasurer</td><td>013-987 6543</td><td>farah@abccondo.my</td><td>—</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="tabpane" id="crm-sites" style="display:none">
+          <div class="card"><h3>Site Location</h3>
+            <div class="map-placeholder">🗺️ Google Map Integration<div class="pin" style="top:60px;left:180px;">📍</div></div>
+            <p style="font-size:13px;margin-top:10px;">ABC Condominium, Jalan Ampang Utama 2/1, 68000 Ampang, Selangor · GPS: 3.1642° N, 101.7549° E · Site Area: 15,000 m² grass</p>
+          </div>
+        </div>
+
+        <div class="tabpane" id="crm-docs" style="display:none">
+          <div class="card"><h3>History</h3>
+            <table>
+              <tr><th>Type</th><th>No.</th><th>Date</th><th>Amount</th><th>Status</th></tr>
+              <tr><td>Quotation</td><td>Q-2027-00118</td><td>03 Nov 2026</td><td>RM 6,350.00</td><td><span class="badge won">Accepted</span></td></tr>
+              <tr><td>Contract</td><td>C-2027-00075</td><td>15 Dec 2026</td><td>RM 76,200.00/yr</td><td><span class="badge active">Active</span></td></tr>
+              <tr><td>Invoice</td><td>INV-2027-00042</td><td>31 Jan 2027</td><td>RM 6,350.00</td><td><span class="badge paid">Paid</span></td></tr>
+              <tr><td>Invoice</td><td>INV-2027-00058</td><td>28 Feb 2027</td><td>RM 6,350.00</td><td><span class="badge pending">Sent</span></td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== SITE INSPECTION ===================== -->
+      <div class="screen" id="screen-inspection">
+        <h2 class="pagetitle">Digital Site Inspection</h2>
+        <div class="pagesub">ABC Condominium · Pre-quotation assessment</div>
+
+        <div class="grid grid-2">
+          <div class="card"><h3>General</h3>
+            <div class="field"><label>Site Address</label><input type="text" value="ABC Condominium, Jalan Ampang Utama 2/1"></div>
+            <div class="grid grid-2">
+              <div class="field"><label>GPS Coordinates</label><input type="text" value="3.1642° N, 101.7549° E" disabled></div>
+              <div class="field"><label>Inspection Date</label><input type="date" value="2026-07-15"></div>
+            </div>
+            <div class="field"><label>Inspector</label><input type="text" value="Mohd Faizal (Site Inspector)"></div>
+          </div>
+          <div class="card"><h3>Landscape Metrics</h3>
+            <div class="grid grid-2">
+              <div class="field"><label>Grass Area (m²)</label><input type="number" value="15000"></div>
+              <div class="field"><label>No. of Trees</label><input type="number" value="42"></div>
+              <div class="field"><label>Shrubs</label><input type="number" value="310"></div>
+              <div class="field"><label>Palms</label><input type="number" value="18"></div>
+            </div>
+            <div class="grid grid-2">
+              <div class="field"><label>Irrigation</label><select><option>Automatic sprinkler</option><option>Manual hose</option><option>None</option></select></div>
+              <div class="field"><label>Drainage Condition</label><select><option selected>Fair — minor blockage</option><option>Good</option><option>Poor</option></select></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card"><h3>Problems Identified</h3>
+          <div class="checklist-item"><input type="checkbox" checked><span class="task-label">Pest infestation — western flower bed</span><span class="severity sev-med">Medium</span></div>
+          <div class="checklist-item"><input type="checkbox" checked><span class="task-label">Dead trees near main entrance (x2)</span><span class="severity sev-high">High</span></div>
+          <div class="checklist-item"><input type="checkbox"><span class="task-label">Uneven ground — playground perimeter</span><span class="severity sev-low">Low</span></div>
+          <div class="checklist-item"><input type="checkbox" checked><span class="task-label">Soil erosion — near entrance slope</span><span class="severity sev-med">Medium</span></div>
+          <div class="checklist-item"><input type="checkbox"><span class="task-label">Drain blockage — block C side drain</span><span class="severity sev-low">Low</span></div>
+        </div>
+
+        <div class="card"><h3>Attachments &amp; AI Photo Analysis</h3>
+          <div class="grid grid-4">
+            <div class="photo-tile">📷 Entrance trees<div class="ai-flag">🤖 2 dead trees detected — 94%</div></div>
+            <div class="photo-tile">📷 Central lawn<div class="ai-flag warn">🤖 Dry / stressed patch — 81%</div></div>
+            <div class="photo-tile">📷 West flower bed<div class="ai-flag warn">🤖 Weed infestation — 76%</div></div>
+            <div class="photo-tile">📷 Drone — overview<div class="ai-flag">🤖 Missing grass area — 88%</div></div>
+          </div>
+          <p style="font-size:11.5px;color:var(--grey);margin-top:10px;">AI flags are advisory. Inspector must accept/dismiss each flag before the report is finalised.</p>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="alert('Inspection report generated (PDF) and linked to ABC Condominium.')">✔ Finalise Report</button>
+          <button class="btn btn-outline" onclick="showScreen('quotation')">→ Convert to Quotation Draft</button>
+        </div>
+      </div>
+
+      <!-- ===================== QUOTATION ===================== -->
+      <div class="screen" id="screen-quotation">
+        <h2 class="pagetitle">Quotation Q-2027-00118 <span class="badge pending">Under Review</span></h2>
+        <div class="pagesub">ABC Condominium · Landscape Maintenance · Version 2 of 2 (draft) · Valid until 03 Dec 2026</div>
+
+        <div class="card">
+          <h3>Quotation Header</h3>
+          <div class="grid grid-4">
+            <div class="field"><label>Sales Executive</label><input type="text" value="Nurul Ain binte Zaidi" disabled></div>
+            <div class="field"><label>Currency</label><input type="text" value="MYR (RM)" disabled></div>
+            <div class="field"><label>Payment Terms</label><input type="text" value="30 days" disabled></div>
+            <div class="field"><label>Delivery Period</label><input type="text" value="Immediate — recurring" disabled></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Cost Breakdown</h3>
+          <table class="quo-table">
+            <tr><th>Category</th><th>Description</th><th style="width:70px">Qty</th><th style="width:120px">Unit Price (RM)</th><th style="width:120px">Amount (RM)</th></tr>
+            <tr><td>Labour</td><td><input type="text" value="Grass Cutting"></td><td><input type="number" class="qline" value="1"></td><td><input type="number" class="qline" value="1450"></td><td class="line-amt">1,450.00</td></tr>
+            <tr><td>Labour</td><td><input type="text" value="Tree Pruning"></td><td><input type="number" class="qline" value="1"></td><td><input type="number" class="qline" value="3200"></td><td class="line-amt">3,200.00</td></tr>
+            <tr><td>Labour</td><td><input type="text" value="Weeding"></td><td><input type="number" class="qline" value="1"></td><td><input type="number" class="qline" value="900"></td><td class="line-amt">900.00</td></tr>
+            <tr><td>Equipment</td><td><input type="text" value="Brush Cutter &amp; Chainsaw Usage"></td><td><input type="number" class="qline" value="1"></td><td><input type="number" class="qline" value="350"></td><td class="line-amt">350.00</td></tr>
+            <tr><td>Fertiliser</td><td><input type="text" value="NPK 15-15-15"></td><td><input type="number" class="qline" value="1"></td><td><input type="number" class="qline" value="800"></td><td class="line-amt">800.00</td></tr>
+            <tr><td>Transport</td><td><input type="text" value="Site mobilisation"></td><td><input type="number" class="qline" value="1"></td><td><input type="number" class="qline" value="180"></td><td class="line-amt">180.00</td></tr>
+          </table>
+          <div class="btn-row" style="margin-top:10px;"><button class="btn btn-outline" onclick="alert('Add line item row (prototype)')">+ Add Line Item</button></div>
+        </div>
+
+        <div class="card">
+          <h3>Pricing Summary</h3>
+          <div class="grid grid-2">
+            <div>
+              <div class="field"><label>Contingency (%)</label><input type="number" id="contPct" value="3"></div>
+              <div class="field"><label>Overhead (%)</label><input type="number" id="ohPct" value="10"></div>
+              <div class="field"><label>Profit Margin (%)</label><input type="number" id="marginPct" value="28"></div>
+              <div class="field"><label>SST Rate (%) — 2026 standard rate</label><input type="number" id="sstPct" value="8"></div>
+            </div>
+            <div class="totals-box">
+              <div class="row"><span>Cost Subtotal</span><span id="tSubtotal">RM 4,962.89</span></div>
+              <div class="row internal"><span>Gross Profit (internal only)</span><span id="tGP">28.0%</span></div>
+              <div class="row"><span>Price before SST</span><span id="tPreTax">RM 6,880.00</span></div>
+              <div class="row"><span>SST (8%)</span><span id="tSst">RM 550.40</span></div>
+              <div class="row grand"><span>Grand Total</span><span id="tGrand">RM 7,430.40</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Approval Workflow</h3>
+          <table>
+            <tr><th>Level</th><th>Approver</th><th>Status</th></tr>
+            <tr><td>1 — Sales Executive</td><td>Nurul Ain binte Zaidi</td><td><span class="badge won">Submitted</span></td></tr>
+            <tr><td>2 — Sales Manager</td><td>Hafiz Rahman</td><td><span class="badge won">Approved</span></td></tr>
+            <tr><td>3 — Operations Manager</td><td>Azahar bin Rosli</td><td><span class="badge pending">Pending</span></td></tr>
+            <tr><td>4 — Finance Review</td><td>—</td><td>—</td></tr>
+            <tr><td>5 — Director Approval</td><td>—</td><td>—</td></tr>
+          </table>
+          <p style="font-size:11px;color:var(--grey);margin-top:8px;">Approval levels and value thresholds are configurable per company policy. The quotation cannot be released to the customer until every level signs off.</p>
+        </div>
+
+        <div class="card">
+          <h3>Customer Communication Log</h3>
+          <div class="timeline">
+            <div class="tstep"><b>15 Jul 2026 —</b> WhatsApp note logged: "Mr Lim asked to confirm palm pruning is included."</div>
+            <div class="tstep"><b>10 Jul 2026 —</b> Phone call: discussed payment terms.</div>
+            <div class="tstep"><b>03 Jul 2026 —</b> Version 1 sent via WhatsApp.</div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="alert('Quotation sent to Mr Lim via WhatsApp (+6012-345 6789).')">💬 Send via WhatsApp</button>
+          <button class="btn btn-outline" onclick="alert('Quotation PDF emailed to lim@abccondo.my.')">✉ Send via Email</button>
+          <button class="btn btn-outline" onclick="showScreen('contract')">✔ Awarded — Create Contract</button>
+        </div>
+      </div>
+
+      <!-- ===================== CONTRACT ===================== -->
+      <div class="screen" id="screen-contract">
+        <h2 class="pagetitle">Contract C-2027-00075 <span class="badge active">Active</span></h2>
+        <div class="pagesub">ABC Condominium · Landscape Maintenance</div>
+
+        <div class="grid grid-2">
+          <div class="card"><h3>Contract Terms</h3>
+            <table>
+              <tr><td>Contract Value</td><td><b>RM 76,200 / year</b></td></tr>
+              <tr><td>Start Date</td><td>01 Jan 2027</td></tr>
+              <tr><td>End Date</td><td>31 Dec 2028</td></tr>
+              <tr><td>Retention</td><td>5% (RM 3,810)</td></tr>
+              <tr><td>Performance Bond</td><td>RM 7,620 — expires 31 Dec 2028</td></tr>
+              <tr><td>Insurance</td><td>Public Liability — expires 14 Nov 2026 <span class="countdown">122 days</span></td></tr>
+            </table>
+          </div>
+          <div class="card"><h3>Resources Assigned</h3>
+            <p style="font-size:13px;"><b>Supervisor:</b> Azahar bin Rosli</p>
+            <p style="font-size:13px;"><b>Workers:</b> Ali Hassan, Raja Kumar, Muthu Selvam</p>
+            <h3 style="margin-top:16px;">Monthly Schedule</h3>
+            <table>
+              <tr><th>Day</th><th>Task</th></tr>
+              <tr><td>Monday</td><td>Grass Cutting</td></tr>
+              <tr><td>Tuesday</td><td>Tree Pruning</td></tr>
+              <tr><td>Wednesday</td><td>Fertilizing</td></tr>
+              <tr><td>Thursday</td><td>Weeding</td></tr>
+              <tr><td>Friday</td><td>Inspection</td></tr>
+            </table>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="showScreen('workorder')">→ Generate This Week's Work Order</button>
+          <button class="btn btn-outline" onclick="alert('Renewal quotation drafted from current contract terms (prototype).')">↻ Start Renewal</button>
+        </div>
+      </div>
+
+      <!-- ===================== WORK ORDER ===================== -->
+      <div class="screen" id="screen-workorder">
+        <h2 class="pagetitle">Work Order WO-2027-00235</h2>
+        <div class="pagesub">ABC Condominium · Scheduled 15 Jul 2026 · Contract C-2027-00075</div>
+
+        <div class="grid grid-2">
+          <div class="card"><h3>Tasks</h3>
+            <div class="checklist-item done"><input type="checkbox" checked onchange="toggleTask(this)"><span class="task-label">Grass Cutting</span></div>
+            <div class="checklist-item done"><input type="checkbox" checked onchange="toggleTask(this)"><span class="task-label">Tree Pruning</span></div>
+            <div class="checklist-item done"><input type="checkbox" checked onchange="toggleTask(this)"><span class="task-label">Fertilizing</span></div>
+            <div class="checklist-item"><input type="checkbox" onchange="toggleTask(this)"><span class="task-label">Cleaning</span></div>
+            <h3 style="margin-top:18px;">Resources</h3>
+            <p style="font-size:13px;"><b>Workers:</b> Ali, Raja, Azahar<br><b>Equipment:</b> Brush Cutter, Chainsaw, Truck</p>
+          </div>
+          <div class="card"><h3>Before / After Evidence</h3>
+            <div class="grid grid-2">
+              <div class="photo-tile">📷 Before</div>
+              <div class="photo-tile">📷 After</div>
+            </div>
+            <h3 style="margin-top:18px;">Digital Signature</h3>
+            <canvas class="signature-pad" id="sigpad" width="400" height="130"></canvas>
+            <div class="btn-row"><button class="btn btn-outline" onclick="clearSig()">Clear</button></div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="alert('Work Order WO-2027-00235 signed off by Mr Lim and closed. Inventory deducted; ready for invoicing.')">✔ Complete &amp; Sign Off</button>
+          <button class="btn btn-outline" onclick="showScreen('dashboard')">← Back to Dashboard</button>
+        </div>
+      </div>
+
+      <!-- ===================== PROJECT PLANNING ===================== -->
+      <div class="screen" id="screen-planning">
+        <h2 class="pagetitle">Project Planning — Portfolio Calendar</h2>
+        <div class="pagesub">All contracts · July 2026</div>
+
+        <div class="alert-banner warn">⚠ Conflict detected: <b>Ali Hassan</b> double-booked on 20 Jul — ABC Condominium &amp; Lotus Business Park.
+          <button class="btn btn-outline" onclick="alert('Conflict resolved: Ali reassigned to ABC Condominium; Muthu Selvam covers Lotus Business Park.')">Resolve</button>
+        </div>
+
+        <div class="card">
+          <div class="cal-toolbar">
+            <button class="seg" onclick="alert('Day view (prototype)')">Day</button>
+            <button class="seg" onclick="alert('Week view (prototype)')">Week</button>
+            <button class="seg on">Month</button>
+            <button class="seg" onclick="alert('Quarter view (prototype)')">Quarter</button>
+            <button class="seg" onclick="alert('Year view (prototype)')">Year</button>
+          </div>
+          <div class="cal-grid">
+            <div class="cal-head">Mon</div><div class="cal-head">Tue</div><div class="cal-head">Wed</div><div class="cal-head">Thu</div><div class="cal-head">Fri</div><div class="cal-head">Sat</div><div class="cal-head">Sun</div>
+            <div class="cal-day other"><div class="dnum">29</div></div><div class="cal-day other"><div class="dnum">30</div></div><div class="cal-day"><div class="dnum">1</div><div class="cal-job">Grass Cutting</div></div><div class="cal-day"><div class="dnum">2</div><div class="cal-job">Tree Pruning</div></div><div class="cal-day"><div class="dnum">3</div><div class="cal-job">Fertilizing</div></div><div class="cal-day other"><div class="dnum">4</div></div><div class="cal-day other"><div class="dnum">5</div></div>
+            <div class="cal-day"><div class="dnum">6</div><div class="cal-job">Grass Cutting</div></div><div class="cal-day"><div class="dnum">7</div><div class="cal-job">Tree Pruning</div></div><div class="cal-day"><div class="dnum">8</div><div class="cal-job">Fertilizing</div></div><div class="cal-day"><div class="dnum">9</div><div class="cal-job">Weeding</div></div><div class="cal-day"><div class="dnum">10</div><div class="cal-job">Inspection</div></div><div class="cal-day other"><div class="dnum">11</div></div><div class="cal-day other"><div class="dnum">12</div></div>
+            <div class="cal-day"><div class="dnum">13</div><div class="cal-job">Grass Cutting</div></div><div class="cal-day"><div class="dnum">14</div><div class="cal-job">Tree Pruning</div></div><div class="cal-day today"><div class="dnum">15</div><div class="cal-job">Fertilizing</div><div class="cal-job">Cleaning</div></div><div class="cal-day"><div class="dnum">16</div><div class="cal-job">Weeding</div></div><div class="cal-day"><div class="dnum">17</div><div class="cal-job">Inspection</div></div><div class="cal-day other"><div class="dnum">18</div></div><div class="cal-day other"><div class="dnum">19</div></div>
+            <div class="cal-day"><div class="dnum">20</div><div class="cal-job conflict">Grass Cutting ⚠</div></div><div class="cal-day"><div class="dnum">21</div><div class="cal-job">Tree Pruning</div></div><div class="cal-day"><div class="dnum">22</div><div class="cal-job">Fertilizing</div></div><div class="cal-day"><div class="dnum">23</div><div class="cal-job">Weeding</div></div><div class="cal-day"><div class="dnum">24</div><div class="cal-job">Palm Pruning</div></div><div class="cal-day other"><div class="dnum">25</div></div><div class="cal-day other"><div class="dnum">26</div></div>
+            <div class="cal-day"><div class="dnum">27</div><div class="cal-job">Grass Cutting</div></div><div class="cal-day"><div class="dnum">28</div><div class="cal-job">Tree Pruning</div></div><div class="cal-day"><div class="dnum">29</div><div class="cal-job">Fertilizing</div></div><div class="cal-day"><div class="dnum">30</div><div class="cal-job">Weeding</div></div><div class="cal-day"><div class="dnum">31</div><div class="cal-job">Inspection</div></div><div class="cal-day other"><div class="dnum">1</div></div><div class="cal-day other"><div class="dnum">2</div></div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="alert('Work Order auto-generated for 15 Jul entries and pushed to supervisors.')">✔ Generate Today&#39;s Work Orders</button>
+          <button class="btn btn-outline" onclick="alert('Bulk reschedule applied: all outdoor jobs 20–22 Jul moved +2 days (reason: heavy rain).')">☔ Bulk Reschedule (Weather)</button>
+        </div>
+      </div>
+
+      <!-- ===================== WORKFORCE MANAGEMENT ===================== -->
+      <div class="screen" id="screen-workforce">
+        <h2 class="pagetitle">Workforce Management</h2>
+        <div class="pagesub">Eco Roots field &amp; office staff</div>
+        <div class="tabs">
+          <div class="tab active" data-tab="wf-directory">Directory</div>
+          <div class="tab" data-tab="wf-expiry">Expiry Dashboard</div>
+          <div class="tab" data-tab="wf-profile">Employee Profile — Raja Kumar</div>
+        </div>
+
+        <div class="tabpane active" id="wf-directory">
+          <div class="card">
+            <table>
+              <tr><th>Name</th><th>Role</th><th>Nationality</th><th>Work Permit</th><th>Competency</th></tr>
+              <tr><td>Azahar bin Rosli</td><td>Supervisor</td><td>Malaysian</td><td>—</td><td><span class="badge complete">Chainsaw ✓</span></td></tr>
+              <tr><td>Ali Hassan</td><td>Worker</td><td>Malaysian</td><td>—</td><td><span class="badge complete">Working-at-Height ✓</span></td></tr>
+              <tr><td>Raja Kumar</td><td>Worker</td><td>Indian (foreign)</td><td><span class="countdown">45 days</span></td><td><span class="badge complete">Chainsaw ✓</span></td></tr>
+              <tr><td>Muthu Selvam</td><td>Worker</td><td>Indian (foreign)</td><td><span class="badge overdue">Expired</span></td><td><span class="badge overdue">Chainsaw expired</span></td></tr>
+              <tr><td>Mohd Faizal</td><td>Site Inspector</td><td>Malaysian</td><td>—</td><td><span class="badge complete">Arborist Cert ✓</span></td></tr>
+              <tr><td>Nurul Ain binte Zaidi</td><td>Sales Executive</td><td>Malaysian</td><td>—</td><td>—</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="tabpane" id="wf-expiry" style="display:none">
+          <div class="alert-banner crit">🔴 Muthu Selvam — Chainsaw certification expired 3 days ago. Blocked from chainsaw-required tasks.</div>
+          <div class="alert-banner warn">🟠 Raja Kumar — Work Permit (PLKS) expires in 45 days. FOMEMA renewal due alongside.</div>
+          <div class="alert-banner warn">🟠 Azahar bin Rosli — Driving licence (Class D) renewal due in 20 days.</div>
+        </div>
+
+        <div class="tabpane" id="wf-profile" style="display:none">
+          <div class="grid grid-2">
+            <div class="card"><h3>Personal &amp; Work Authorization</h3>
+              <p style="font-size:13px;line-height:1.9;">
+                <b>Name:</b> Raja Kumar a/l Muniandy<br>
+                <b>Nationality:</b> Indian (Foreign Worker)<br>
+                <b>Passport No.:</b> K9021xxxx<br>
+                <b>Work Permit (PLKS):</b> Expires 29 Aug 2026 <span class="countdown">45 days</span><br>
+                <b>FOMEMA:</b> Passed — 12 Jan 2026<br>
+                <b>EPF/SOCSO:</b> Registered (2% employer / 2% employee per 2025 foreign-worker EPF rule)
+              </p>
+            </div>
+            <div class="card"><h3>Competency &amp; Attendance</h3>
+              <p style="font-size:13px;line-height:1.9;">
+                <b>CIDB / Training:</b> Chainsaw Handling ✓ (exp. Mar 2027)<br>
+                <b>Driving Licence:</b> Class D, exp. Feb 2028<br>
+                <b>Attendance (MTD):</b> 21 / 22 working days<br>
+                <b>Leave Balance:</b> 8 days annual<br>
+                <b>Overtime (MTD):</b> 6.5 hrs — WO-2027-00231, WO-2027-00235
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== EQUIPMENT MANAGEMENT ===================== -->
+      <div class="screen" id="screen-equipment">
+        <h2 class="pagetitle">Equipment Management</h2>
+        <div class="pagesub">Fleet &amp; machinery register</div>
+
+        <div class="grid grid-2">
+          <div class="card">
+            <h3>Equipment Register</h3>
+            <table>
+              <tr><th>Equipment</th><th>Serial No.</th><th>Status</th><th>Next Service</th></tr>
+              <tr><td>Honda Brush Cutter</td><td>HBC-2291</td><td><span class="badge active">Available</span></td><td>02 Aug 2026</td></tr>
+              <tr><td>Stihl Chainsaw</td><td>STC-1187</td><td><span class="badge pending">In-Use</span></td><td>18 Aug 2026</td></tr>
+              <tr><td>Toyota Hilux (Truck)</td><td>WXY 4821</td><td><span class="badge pending">In-Use</span></td><td>10 Sep 2026</td></tr>
+              <tr><td>Hedge Trimmer</td><td>HDT-0552</td><td><span class="badge overdue">In-Maintenance</span></td><td>Overdue — 16 Jul 2026</td></tr>
+              <tr><td>Backpack Blower</td><td>BPB-0331</td><td><span class="badge active">Available</span></td><td>05 Oct 2026</td></tr>
+            </table>
+          </div>
+          <div class="card">
+            <h3>Honda Brush Cutter — HBC-2291</h3>
+            <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:14px;">
+              <div class="qr-box"></div>
+              <p style="font-size:12px;color:var(--grey);">Scan on check-out / check-in to log usage hours, GPS, and linked Work Order automatically.</p>
+            </div>
+            <table>
+              <tr><td>Usage Hours (MTD)</td><td><b>38.5 hrs</b></td></tr>
+              <tr><td>Last Service</td><td>02 May 2026 — RM 85 (blade replacement)</td></tr>
+              <tr><td>Fuel Cost (MTD)</td><td>RM 142.00</td></tr>
+              <tr><td>Assigned To</td><td>Ali Hassan</td></tr>
+            </table>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="alert('QR code sheet generated for all equipment (PDF, prototype).')">🖨 Print QR Codes</button>
+        </div>
+      </div>
+
+      <!-- ===================== INVENTORY ===================== -->
+      <div class="screen" id="screen-inventory">
+        <h2 class="pagetitle">Inventory</h2>
+        <div class="pagesub">Nursery stock &amp; consumables</div>
+
+        <div class="alert-banner warn">⚠ 2 items below reorder point — review stock or raise a Purchase Request.</div>
+
+        <div class="card">
+          <table>
+            <tr><th>SKU</th><th>Item</th><th>Qty on Hand</th><th>Reorder Point</th><th>Status</th></tr>
+            <tr><td>FERT-1515</td><td>NPK Fertilizer 15-15-15</td><td>32 bags</td><td>40 bags</td><td><span class="badge overdue">Low Stock</span></td></tr>
+            <tr><td>PEST-MAL2</td><td>Malathion Pesticide</td><td>18 L</td><td>15 L</td><td><span class="badge active">OK</span></td></tr>
+            <tr><td>SEED-GRS1</td><td>Grass Seed (Cow Grass)</td><td>65 kg</td><td>50 kg</td><td><span class="badge active">OK</span></td></tr>
+            <tr><td>MULCH-01</td><td>Wood Mulch</td><td>12 bags</td><td>20 bags</td><td><span class="badge overdue">Low Stock</span></td></tr>
+            <tr><td>POT-M30</td><td>Plant Pots (30cm)</td><td>140 units</td><td>100 units</td><td><span class="badge active">OK</span></td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Stock Movement — NPK Fertilizer 15-15-15</h3>
+          <table>
+            <tr><th>Date</th><th>Type</th><th>Qty</th><th>Reference</th></tr>
+            <tr><td>15 Jul 2026</td><td>Deduction</td><td>-4 bags</td><td>WO-2027-00235 (ABC Condominium)</td></tr>
+            <tr><td>10 Jul 2026</td><td>Deduction</td><td>-6 bags</td><td>WO-2027-00229 (Lotus Business Park)</td></tr>
+            <tr><td>01 Jul 2026</td><td>Goods Receipt</td><td>+50 bags</td><td>GRN-2026-0088</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===================== MOBILE APP ===================== -->
+      <div class="screen" id="screen-mobileapp">
+        <h2 class="pagetitle">Mobile App — Field View</h2>
+        <div class="pagesub">Preview of the worker-facing phone app · Ali Hassan</div>
+
+        <div class="phone-frame">
+          <div class="phone-status">15 Jul 2026 · 7:42 AM</div>
+          <div class="sync-pill offline">📶 Offline — 2 items queued</div>
+          <div class="btn-row" style="justify-content:center;margin-bottom:10px;">
+            <button class="btn btn-primary" onclick="alert('Clocked in at 7:42 AM — GPS: ABC Condominium.')">Clock In</button>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:4px;">Today&#39;s Tasks</div>
+          <div class="phone-task"><span class="ic">✅</span> Grass Cutting — ABC Condo</div>
+          <div class="phone-task"><span class="ic">✅</span> Tree Pruning — ABC Condo</div>
+          <div class="phone-task"><span class="ic">🕓</span> Fertilizing — ABC Condo</div>
+          <div class="phone-task"><span class="ic">⬜</span> Cleaning — ABC Condo</div>
+          <div class="btn-row" style="justify-content:center;margin-top:10px;">
+            <button class="btn btn-outline" onclick="alert('2 queued items synced: Fertilizing photos + Cleaning checklist.')">🔄 Sync Now</button>
+          </div>
+        </div>
+        <p style="text-align:center;font-size:11.5px;color:var(--grey);margin-top:12px;max-width:480px;margin-left:auto;margin-right:auto;">
+          Forms, photos, and signatures captured offline are queued locally and sync automatically once connectivity returns — nothing is lost at low-signal sites.
+        </p>
+      </div>
+
+      <!-- ===================== TREE MANAGEMENT ===================== -->
+      <div class="screen" id="screen-tree">
+        <h2 class="pagetitle">Tree Management</h2>
+        <div class="pagesub">ABC Condominium · 42 registered trees</div>
+
+        <div class="grid grid-2">
+          <div class="card">
+            <h3>Tree Register (Site Map)</h3>
+            <div class="map-placeholder">
+              🗺️ Site Map
+              <div class="risk-pin risk-low" style="top:30px;left:60px;" title="T-002 Low risk"></div>
+              <div class="risk-pin risk-low" style="top:50px;left:110px;" title="T-005 Low risk"></div>
+              <div class="risk-pin risk-med" style="top:80px;left:180px;" title="T-009 Moderate risk"></div>
+              <div class="risk-pin risk-high" style="top:100px;left:230px;" title="T-014 High risk"></div>
+              <div class="risk-pin risk-low" style="top:40px;left:270px;" title="T-018 Low risk"></div>
+              <div class="risk-pin risk-med" style="top:110px;left:90px;" title="T-021 Moderate risk"></div>
+            </div>
+            <p style="font-size:11px;color:var(--grey);margin-top:8px;">🟢 Low  🟠 Moderate  🔴 High risk</p>
+          </div>
+          <div class="card">
+            <h3>Tree T-014 — Angsana (Pterocarpus indicus)</h3>
+            <table>
+              <tr><td>Height / Diameter</td><td>12 m / 68 cm</td></tr>
+              <tr><td>Estimated Age</td><td>~35 years</td></tr>
+              <tr><td>Risk Rating</td><td><span class="badge overdue">High</span></td></tr>
+              <tr><td>Health Score</td><td>62 / 100</td></tr>
+              <tr><td>Next Inspection Due</td><td>15 Oct 2026 (3-month cycle — High risk)</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>AI Photo-Over-Time Comparison — Tree T-014</h3>
+          <div class="grid grid-2">
+            <div class="photo-tile">📷 Previous — 15 Apr 2026</div>
+            <div class="photo-tile">📷 Current — 15 Jul 2026<div class="ai-flag">🤖 Canopy thinning detected — 87%</div></div>
+          </div>
+          <p style="font-size:11.5px;color:var(--grey);margin-top:10px;">AI-flagged changes are advisory. Risk Rating and Health Score above were confirmed by Arborist Mohd Faizal.</p>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="alert('Ad-hoc Work Order raised: urgent canopy assessment for Tree T-014.')">⚠ Raise Urgent Work Order</button>
+        </div>
+      </div>
+
+      <!-- ===================== LANDSCAPE ASSET REGISTER ===================== -->
+      <div class="screen" id="screen-asset">
+        <h2 class="pagetitle">Landscape Asset Register</h2>
+        <div class="pagesub">ABC Condominium · Non-tree assets</div>
+
+        <div class="alert-banner crit">🔴 Pond &amp; Water Feature flagged Critical condition — auto Work Order recommended.
+          <button class="btn btn-outline" onclick="alert('Work Order WO-2027-00241 created: pond inspection and cleaning.')">Create Work Order</button>
+        </div>
+
+        <div class="card">
+          <table>
+            <tr><th>Asset Type</th><th>Qty</th><th>Condition</th><th>Notes</th></tr>
+            <tr><td>Garden Lighting</td><td>42 units</td><td><span class="cond-badge cond-good">Good</span></td><td>Last checked 01 Jul 2026</td></tr>
+            <tr><td>Benches</td><td>12 units</td><td><span class="cond-badge cond-fair">Fair</span></td><td>2 units need repainting</td></tr>
+            <tr><td>Gazebo</td><td>1 unit</td><td><span class="cond-badge cond-good">Good</span></td><td>—</td></tr>
+            <tr><td>Pond &amp; Water Feature</td><td>1 unit</td><td><span class="cond-badge cond-critical">Critical</span></td><td>Pump malfunction, algae buildup</td></tr>
+            <tr><td>Irrigation System</td><td>1 system</td><td><span class="cond-badge cond-good">Good</span></td><td>Checked monthly</td></tr>
+            <tr><td>Playground Equipment</td><td>1 set</td><td><span class="cond-badge cond-fair">Fair</span></td><td>Safety cert. renewal due Sep 2026</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===================== PREVENTIVE MAINTENANCE ===================== -->
+      <div class="screen" id="screen-pm">
+        <h2 class="pagetitle">Preventive Maintenance</h2>
+        <div class="pagesub">Recurring rules across all contracts</div>
+
+        <div class="alert-banner crit">🔴 Palm Pruning — Lotus Business Park — 6 days overdue.
+          <button class="btn btn-outline" onclick="alert('Palm Pruning Work Order created for Lotus Business Park.')">Create Work Order</button>
+        </div>
+
+        <div class="card">
+          <h3>Maintenance Rule Library</h3>
+          <table>
+            <tr><th>Task Type</th><th>Frequency</th><th>Applies To</th><th>Next Due</th></tr>
+            <tr><td>Grass Cutting</td><td>Every 14 days</td><td>All active contracts</td><td>29 Jul 2026</td></tr>
+            <tr><td>Fertilizing</td><td>Every 1 month</td><td>All active contracts</td><td>15 Aug 2026</td></tr>
+            <tr><td>Palm Pruning</td><td>Every 6 months</td><td>Sites with palms</td><td><span class="badge overdue">Overdue</span></td></tr>
+            <tr><td>Tree Inspection</td><td>Per risk category (3–12 mo.)</td><td>All registered trees</td><td>Varies (Module 11)</td></tr>
+            <tr><td>Pond Water Test</td><td>Every 3 months</td><td>Sites with water features</td><td>01 Sep 2026</td></tr>
+          </table>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-outline" onclick="alert('Rule template applied to new contract (prototype).')">+ Apply Template to New Contract</button>
+        </div>
+      </div>
+
+      <!-- ===================== PURCHASING ===================== -->
+      <div class="screen" id="screen-purchasing">
+        <h2 class="pagetitle">Purchasing</h2>
+        <div class="pagesub">Supplier orders &amp; goods receipt</div>
+
+        <div class="alert-banner warn">⚠ Auto-generated PR-2026-0091 from Inventory low-stock alert: NPK Fertilizer 15-15-15 fell below reorder point (Module 8).
+          <button class="btn btn-outline" onclick="alert('PR-2026-0091 routed to Operations Manager for approval.')">Review</button>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="card">
+            <h3>Supplier Directory</h3>
+            <table>
+              <tr><th>Supplier</th><th>Category</th><th>Payment Terms</th></tr>
+              <tr><td>Greenscape Supplies Sdn Bhd</td><td>Fertiliser &amp; Pesticide</td><td>30 days</td></tr>
+              <tr><td>AgriChem Malaysia</td><td>Chemicals</td><td>30 days</td></tr>
+              <tr><td>Nursery World</td><td>Plants &amp; Grass</td><td>Cash on delivery</td></tr>
+              <tr><td>Machinery Parts Co.</td><td>Equipment Parts</td><td>14 days</td></tr>
+            </table>
+          </div>
+          <div class="card">
+            <h3>Purchase Requests / Orders</h3>
+            <table>
+              <tr><th>No.</th><th>Supplier</th><th>Status</th></tr>
+              <tr><td>PR-2026-0091</td><td>Greenscape Supplies</td><td><span class="badge pending">Pending Approval</span></td></tr>
+              <tr><td>PO-2026-0077</td><td>Nursery World</td><td><span class="badge active">Issued</span></td></tr>
+              <tr><td>PO-2026-0076</td><td>Machinery Parts Co.</td><td><span class="badge won">GRN Received</span></td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Invoice Matching (Three-Way Match)</h3>
+          <table>
+            <tr><th>PO No.</th><th>GRN</th><th>Supplier Invoice</th><th>Match Status</th></tr>
+            <tr><td>PO-2026-0076</td><td>GRN-2026-0088</td><td>INV-MP-2291</td><td><span class="badge active">Matched</span></td></tr>
+            <tr><td>PO-2026-0071</td><td>GRN-2026-0083</td><td>INV-GS-1187</td><td><span class="badge overdue">Discrepancy — qty mismatch</span></td></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===================== CUSTOMER PORTAL ===================== -->
+      <div class="screen" id="screen-portal">
+        <h2 class="pagetitle">Customer Portal</h2>
+        <div class="pagesub">Preview of what Mr Lim (ABC Condominium) sees when logged in</div>
+
+        <div class="portal-frame">
+          <div class="portal-topbar"><span>🔒 portal.ecoscape.my/abc-condominium</span><span>Mr Lim Chee Keong ▾</span></div>
+          <div class="portal-body">
+            <div class="grid grid-2">
+              <div class="card"><h3>My Contract</h3>
+                <p style="font-size:13px;line-height:1.9;">
+                  <b>Contract:</b> C-2027-00075<br>
+                  <b>Status:</b> <span class="badge active">Active</span><br>
+                  <b>Renewal Date:</b> 31 Dec 2028
+                </p>
+              </div>
+              <div class="card"><h3>Upcoming Schedule</h3>
+                <table>
+                  <tr><th>Date</th><th>Task</th></tr>
+                  <tr><td>17 Jul 2026</td><td>Inspection</td></tr>
+                  <tr><td>20 Jul 2026</td><td>Grass Cutting</td></tr>
+                  <tr><td>21 Jul 2026</td><td>Tree Pruning</td></tr>
+                </table>
+              </div>
+            </div>
+            <div class="card"><h3>My Invoices</h3>
+              <table>
+                <tr><th>Invoice No.</th><th>Month</th><th>Amount</th><th>Status</th><th></th></tr>
+                <tr><td>INV-2027-00042</td><td>Jan 2027</td><td>RM 6,350.00</td><td><span class="badge paid">Paid</span></td><td><button class="btn btn-outline" onclick="alert('Downloading INV-2027-00042.pdf (prototype).')">Download</button></td></tr>
+                <tr><td>INV-2027-00058</td><td>Feb 2027</td><td>RM 6,350.00</td><td><span class="badge pending">Sent</span></td><td><button class="btn btn-outline" onclick="alert('Downloading INV-2027-00058.pdf (prototype).')">Download</button></td></tr>
+              </table>
+            </div>
+            <div class="card"><h3>Submit a Request</h3>
+              <div class="grid grid-2">
+                <div class="field"><label>Category</label><select><option>Dead tree</option><option>Broken irrigation</option><option>Fallen branch</option><option>Flooding</option><option>Grass too long</option></select></div>
+                <div class="field"><label>Photo</label><input type="text" placeholder="Attach photo (prototype)" disabled></div>
+              </div>
+              <div class="field"><label>Description</label><textarea rows="2" placeholder="Describe the issue"></textarea></div>
+              <button class="btn btn-primary" onclick="alert('Request submitted — routed to Complaint Management (Module 18).')">Submit Request</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== COMPLAINT MANAGEMENT ===================== -->
+      <div class="screen" id="screen-complaints">
+        <h2 class="pagetitle">Complaint Management</h2>
+        <div class="pagesub">Customer-reported issues · SLA tracked</div>
+
+        <div class="alert-banner crit">🔴 URGENT — Flooding reported at Sunway Grove Hospital. SLA: 4-hour response. <span class="countdown" style="background:#FFEBEE;color:#B71C1C;">1h 12m left</span>
+          <button class="btn btn-outline" onclick="alert('Ad-hoc Work Order WO-2027-00248 created and dispatched to Supervisor on duty.')">Convert to Work Order</button>
+        </div>
+
+        <div class="card">
+          <table>
+            <tr><th>Complaint</th><th>Category</th><th>Site</th><th>Submitted Via</th><th>SLA</th><th>Status</th></tr>
+            <tr><td>CMP-2026-0141</td><td>Flooding</td><td>Sunway Grove Hospital</td><td>Portal</td><td><span class="countdown" style="background:#FFEBEE;color:#B71C1C;">1h 12m</span></td><td><span class="badge pending">New</span></td></tr>
+            <tr><td>CMP-2026-0139</td><td>Broken irrigation</td><td>Lotus Business Park</td><td>Phone</td><td><span class="countdown">1 day</span></td><td><span class="badge pending">Assigned</span></td></tr>
+            <tr><td>CMP-2026-0135</td><td>Grass too long</td><td>ABC Condominium</td><td>Portal</td><td>—</td><td><span class="badge complete">Resolved</span></td></tr>
+            <tr><td>CMP-2026-0130</td><td>Fallen branch</td><td>Taman Perindustrian Jaya</td><td>Email</td><td>—</td><td><span class="badge complete">Closed</span></td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Complaint Analytics (MTD)</h3>
+          <div class="grid grid-3">
+            <div class="kpi"><div class="label">Total Complaints</div><div class="value">14</div></div>
+            <div class="kpi"><div class="label">Avg. Resolution Time</div><div class="value">1.8 days</div></div>
+            <div class="kpi"><div class="label">Repeat-Site Flags</div><div class="value" style="color:var(--red)">1</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== AI ASSISTANT ===================== -->
+      <div class="screen" id="screen-ai">
+        <h2 class="pagetitle">AI Assistant</h2>
+        <div class="pagesub">Natural-language queries across all EcoScape data</div>
+
+        <div class="chat-panel">
+          <div class="chat-history" id="chatHistory">
+            <div class="chat-bubble user">Show me all contracts expiring next month.</div>
+            <div class="chat-bubble ai">2 contracts expire in the next 30 days: <b>Lotus Business Park</b> (C-2026-00041, 14 Sep 2026) and <b>Sunway Grove Hospital</b> (C-2026-00052, 02 Oct 2026).
+              <span class="sources">Sources: Contract Management (Module 4) — 2 records</span>
+            </div>
+            <div class="chat-bubble user">Generate a quotation for a condominium with 15,000 m² grass area.</div>
+            <div class="chat-bubble ai">Draft BOQ prepared using standard Eco Roots rates: Grass Cutting RM1,450, Tree Pruning RM3,200, Weeding RM900, Fertilizer RM800 — Total RM6,858 incl. 8% SST. Opening in Quotation Builder for your review before sending.
+              <span class="sources">Sources: Quotation Management (Module 3) rate card — draft requires human approval before sending</span>
+            </div>
+          </div>
+          <div class="chat-suggest">
+            <div class="chat-chip" onclick="askAI('Which sites have overdue invoices?')">Which sites have overdue invoices?</div>
+            <div class="chat-chip" onclick="askAI('Which equipment requires servicing?')">Which equipment requires servicing?</div>
+            <div class="chat-chip" onclick="askAI('Prepare monthly report for Lotus')">Prepare monthly report for Lotus</div>
+          </div>
+          <div class="chat-input-row">
+            <input type="text" id="chatInput" placeholder="Ask about contracts, invoices, equipment, reports…">
+            <button class="btn btn-primary" onclick="askAI()">Ask</button>
+          </div>
+        </div>
+        <p class="ai-disclosure">⚠ AI-generated answers are advisory and cite their data sources. The Assistant never sends a quotation, invoice, or report without a human clicking approve.</p>
+      </div>
+
+      <!-- ===================== DOCUMENT MANAGEMENT ===================== -->
+      <div class="screen" id="screen-documents">
+        <h2 class="pagetitle">Document Management</h2>
+        <div class="pagesub">Central, AI-searchable repository</div>
+
+        <div class="card">
+          <input type="text" placeholder="🔍 Ask in plain language — e.g. 'insurance certificate for ABC Condominium expiring this year'" onkeydown="if(event.key==='Enter') alert('Found: Public Liability Insurance — ABC Condominium, expires 14 Nov 2026.')">
+        </div>
+
+        <div class="card">
+          <h3>Folders</h3>
+          <div class="folder-grid">
+            <div class="folder-tile" onclick="alert('Opening Contracts folder (prototype).')"><span class="fic">📄</span>Contracts</div>
+            <div class="folder-tile" onclick="alert('Opening Insurance folder (prototype).')"><span class="fic">🛡️</span>Insurance</div>
+            <div class="folder-tile" onclick="alert('Opening Tree Reports folder (prototype).')"><span class="fic">🌳</span>Tree Reports</div>
+            <div class="folder-tile" onclick="alert('Opening Invoices folder (prototype).')"><span class="fic">🧾</span>Invoices</div>
+            <div class="folder-tile" onclick="alert('Opening Permits folder (prototype).')"><span class="fic">📋</span>Permits</div>
+            <div class="folder-tile" onclick="alert('Opening Method Statements folder (prototype).')"><span class="fic">📑</span>Method Statements</div>
+            <div class="folder-tile" onclick="alert('Opening Risk Assessments folder (prototype).')"><span class="fic">⚠️</span>Risk Assessments</div>
+            <div class="folder-tile" onclick="alert('Opening ISO Documents folder (prototype).')"><span class="fic">🏅</span>ISO Documents</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Recent / Expiring Documents</h3>
+          <table>
+            <tr><th>Document</th><th>Type</th><th>Customer</th><th>Expiry</th></tr>
+            <tr><td>Public Liability Insurance</td><td>Insurance</td><td>ABC Condominium</td><td><span class="countdown">122 days</span></td></tr>
+            <tr><td>Performance Bond</td><td>Contract</td><td>ABC Condominium</td><td>31 Dec 2028</td></tr>
+            <tr><td>Risk Assessment — Tree Works</td><td>Risk Assessment</td><td>Sunway Grove Hospital</td><td>Reviewed 03 Jul 2026</td></tr>
+            <tr><td>Method Statement — Palm Pruning</td><td>Method Statement</td><td>All sites</td><td>v3, current</td></tr>
+            <tr><td>Playground Safety Certificate</td><td>Permit</td><td>ABC Condominium</td><td><span class="countdown">62 days</span></td></tr>
+          </table>
+          <p style="font-size:11px;color:var(--grey);margin-top:8px;">Financial and employee records are archived, not deleted, once their statutory retention period (7 years / 6 years respectively) is reached.</p>
+        </div>
+      </div>
+
+      <div class="footer-note">EcoScape v1.0 clickable prototype — for review purposes only. Sample data (ABC Condominium) is illustrative.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- Navigation ----
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item[data-screen]').forEach(n=>n.classList.remove('active'));
+  const navItem = document.querySelector('.nav-item[data-screen="'+id+'"]');
+  if(navItem) navItem.classList.add('active');
+  const titles = {dashboard:'Dashboard',customerlist:'CRM — Customers',customernew:'CRM — Add Customer',crm:'CRM — ABC Condominium',inspection:'Site Inspection',quotation:'Quotation Q-2027-00118',contract:'Contract C-2027-00075',workorder:'Work Order WO-2027-00235',
+    planning:'Project Planning — Calendar',workforce:'Workforce Management',equipment:'Equipment Management',inventory:'Inventory',mobileapp:'Mobile App — Field View',tree:'Tree Management',asset:'Landscape Asset Register',pm:'Preventive Maintenance',
+    purchasing:'Purchasing',portal:'Customer Portal',complaints:'Complaint Management',ai:'AI Assistant',documents:'Document Management'};
+  document.getElementById('topTitle').textContent = titles[id] || id;
+  document.getElementById('content').scrollTop = 0;
+}
+document.querySelectorAll('.nav-item[data-screen]').forEach(item=>{
+  item.addEventListener('click', ()=>showScreen(item.dataset.screen));
+});
+document.querySelectorAll('.nav-item.locked').forEach(item=>{
+  item.addEventListener('click', ()=>alert('This module is planned for a later phase — see the SRS roadmap (Section 8).'));
+});
+showScreen('dashboard');
+
+// ---- Tabs (scoped per screen, so CRM / Workforce tab groups don't clash) ----
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    const scope = tab.closest('.screen') || document;
+    scope.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    scope.querySelectorAll('.tabpane').forEach(p=>p.style.display='none');
+    document.getElementById(tab.dataset.tab).style.display='block';
+  });
+});
+
+// ---- Add Customer ----
+function saveCustomer(){
+  const name = document.getElementById('newCompanyName').value.trim();
+  if(!name){ alert('Please enter a Company Name before saving.'); return; }
+  const contact = document.getElementById('newContactName').value.trim() || '—';
+  const segment = document.getElementById('newSegment').value;
+  const stage = document.getElementById('newStage').value;
+  const stageBadge = stage === 'Enquiry' ? '<span class="badge pending">Enquiry</span>'
+    : stage === 'Site Visit Scheduled' ? '<span class="badge pending">Site Visit Scheduled</span>'
+    : '<span class="badge pending">Quotation Sent</span>';
+  const table = document.getElementById('customerTable');
+  const row = table.insertRow(-1);
+  row.style.cursor = 'pointer';
+  row.onclick = function(){ alert('New customers use this generic view until their full profile is built out (prototype limitation — only ABC Condominium has one).'); };
+  row.innerHTML = '<td>'+name+'</td><td>'+contact+'</td><td>'+segment+'</td><td>'+stageBadge+'</td><td>—</td>';
+  alert('Customer "'+name+'" created and added to the CRM pipeline.');
+  ['newCompanyName','newSSM','newBillingAddress','newContactName','newDesignation','newPhone','newEmail','newSiteAddress','newArea'].forEach(id=>{ document.getElementById(id).value=''; });
+  showScreen('customerlist');
+}
+
+// ---- AI Assistant ----
+const aiCanned = {
+  'which sites have overdue invoices?': 'ABC Condominium has 1 overdue invoice (INV-2027-00058, 12 days overdue). Sunway Grove Hospital has none outstanding. <span class="sources">Sources: Invoicing (Module 16) — ageing report</span>',
+  'which equipment requires servicing?': 'Hedge Trimmer (HDT-0552) is overdue for service since 16 Jul 2026. Honda Brush Cutter (HBC-2291) is due 02 Aug 2026. <span class="sources">Sources: Equipment Management (Module 7)</span>',
+  'prepare monthly report for lotus': 'Draft monthly report for Lotus Business Park compiled: 4 Work Orders completed, 0 complaints, RM 54,000 contract value, on schedule. Opening editable draft for your review before sending. <span class="sources">Sources: Contract, Work Order, and Finance modules — human approval required before sending</span>',
+};
+function askAI(preset){
+  const input = document.getElementById('chatInput');
+  const question = preset || input.value.trim();
+  if(!question) return;
+  const history = document.getElementById('chatHistory');
+  const userBubble = document.createElement('div');
+  userBubble.className = 'chat-bubble user';
+  userBubble.textContent = question;
+  history.appendChild(userBubble);
+
+  const answer = aiCanned[question.toLowerCase()] || "I can only answer a few sample questions in this prototype. In the full product this would query live data across every module you have access to, scoped to your permissions. <span class=\"sources\">Sources: none — demo response</span>";
+  const aiBubble = document.createElement('div');
+  aiBubble.className = 'chat-bubble ai';
+  aiBubble.innerHTML = answer;
+  history.appendChild(aiBubble);
+
+  history.scrollTop = history.scrollHeight;
+  if(!preset) input.value = '';
+}
+
+// ---- Work order checklist ----
+function toggleTask(cb){
+  cb.closest('.checklist-item').classList.toggle('done', cb.checked);
+}
+
+// ---- Quotation calculator ----
+function recalcQuotation(){
+  let subtotal = 0;
+  document.querySelectorAll('.quo-table tr').forEach((row,i)=>{
+    if(i===0) return;
+    const inputs = row.querySelectorAll('.qline');
+    if(inputs.length<2) return;
+    const qty = parseFloat(inputs[0].value)||0;
+    const price = parseFloat(inputs[1].value)||0;
+    const amt = qty*price;
+    row.querySelector('.line-amt').textContent = amt.toLocaleString('en-MY',{minimumFractionDigits:2});
+    subtotal += amt;
+  });
+  const contPct = parseFloat((document.getElementById('contPct')||{}).value)||0;
+  const ohPct = parseFloat((document.getElementById('ohPct')||{}).value)||0;
+  const marginPct = parseFloat(document.getElementById('marginPct').value)||0;
+  const sstPct = parseFloat(document.getElementById('sstPct').value)||0;
+  const withContOh = subtotal * (1 + contPct/100 + ohPct/100);
+  const costBase = withContOh/(1+marginPct/100); // treat as price incl. margin for demo
+  const gp = withContOh>0 ? (withContOh-costBase)/withContOh*100 : 0;
+  const sst = withContOh*(sstPct/100);
+  const grand = withContOh+sst;
+  document.getElementById('tSubtotal').textContent = 'RM '+costBase.toLocaleString('en-MY',{minimumFractionDigits:2});
+  document.getElementById('tGP').textContent = gp.toFixed(1)+'%';
+  document.getElementById('tPreTax').textContent = 'RM '+withContOh.toLocaleString('en-MY',{minimumFractionDigits:2});
+  document.getElementById('tSst').textContent = 'RM '+sst.toLocaleString('en-MY',{minimumFractionDigits:2});
+  document.getElementById('tGrand').textContent = 'RM '+grand.toLocaleString('en-MY',{minimumFractionDigits:2});
+}
+document.querySelectorAll('.qline, #marginPct, #sstPct, #contPct, #ohPct').forEach(el=>el.addEventListener('input', recalcQuotation));
+recalcQuotation();
+
+// ---- Signature pad ----
+const canvas = document.getElementById('sigpad');
+const ctx = canvas.getContext('2d');
+ctx.strokeStyle = '#1F3A3D'; ctx.lineWidth = 2; ctx.lineCap='round';
+let drawing = false;
+function pos(e){
+  const r = canvas.getBoundingClientRect();
+  const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+  const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+  return [cx*(canvas.width/r.width), cy*(canvas.height/r.height)];
+}
+function start(e){ drawing=true; const [x,y]=pos(e); ctx.beginPath(); ctx.moveTo(x,y); e.preventDefault(); }
+function move(e){ if(!drawing) return; const [x,y]=pos(e); ctx.lineTo(x,y); ctx.stroke(); e.preventDefault(); }
+function end(){ drawing=false; }
+canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
+canvas.addEventListener('touchstart', start); canvas.addEventListener('touchmove', move); window.addEventListener('touchend', end);
+function clearSig(){ ctx.clearRect(0,0,canvas.width,canvas.height); }
+</script>
+</body>
+</html>
